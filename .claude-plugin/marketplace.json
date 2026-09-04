@@ -1,0 +1,17 @@
+{
+  "name": "matsek",
+  "owner": {
+    "name": "Matematička sekcija FER",
+    "url": "https://github.com/matsek-fer"
+  },
+  "plugins": [
+    {
+      "name": "tutor",
+      "source": {
+        "source": "github",
+        "repo": "matsek-fer/AI_instructor"
+      },
+      "description": "Autonomous AI tutor: probe → plan → teach, with a live Obsidian-compatible session log. Run /tutor after installing."
+    }
+  ]
+}
