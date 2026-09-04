@@ -9,8 +9,8 @@
     {
       "name": "tutor",
       "source": {
-        "source": "github",
-        "repo": "matsek-fer/AI_instructor"
+        "source": "url",
+        "url": "https://github.com/matsek-fer/AI_instructor.git"
       },
       "description": "Autonomous AI tutor: probe → plan → teach, with a live Obsidian-compatible session log. Run /tutor after installing."
     }
