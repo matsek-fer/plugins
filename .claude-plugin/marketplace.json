@@ -1,5 +1,6 @@
 {
   "name": "matsek",
+  "description": "Tools of the Mathematics Section (Matematička sekcija) at FER: AI tutor, paper reader, problemset search, blog writer — install once, updates flow automatically.",
   "owner": {
     "name": "Matematička sekcija FER",
     "url": "https://github.com/matsek-fer"
