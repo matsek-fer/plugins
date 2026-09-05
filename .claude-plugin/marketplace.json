@@ -13,6 +13,14 @@
         "url": "https://github.com/matsek-fer/AI_instructor.git"
       },
       "description": "Autonomous AI tutor: probe → plan → teach, with a live Obsidian-compatible session log. Run /tutor after installing."
+    },
+    {
+      "name": "problemset",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/matsek-fer/library.git"
+      },
+      "description": "Fine-grained problem retrieval over the community library: ladders by difficulty, build-ups ordered by prerequisites, honest about what the library lacks. Ask for zadaci on a topic."
     }
   ]
 }
