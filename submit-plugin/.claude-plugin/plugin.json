@@ -1,0 +1,10 @@
+{
+  "name": "submit",
+  "version": "0.1.0",
+  "description": "Turn a finished tutor session into value: a personal how-to-use-the-tool-better report, and — only with explicit consent — a scrubbed experience bundle submitted to the community library.",
+  "author": {
+    "name": "Matematička sekcija FER",
+    "url": "https://github.com/matsek-fer"
+  },
+  "skills": ["./skills/submit", "./skills/improve"]
+}

@@ -12,14 +12,15 @@ Updates arrive automatically through the marketplace.
 
 | Plugin | What it is | Status |
 |---|---|---|
-| `tutor` | AI tutor (probe → plan → teach) with a live Markdown session log | wiring up (Phase 2) |
-| `problemset` | Fine-grained problem retrieval over the community library | planned (Phase 3) |
-| `reader` | Paper reader: ingest a PDF, select, ask — fully local | planned (Phase 4) |
-| `blog-writer` | Writes two-tier blogs (static web + interactive local) | planned (Phase 5) |
+| `tutor` | AI tutor (probe → plan → teach) with a live Markdown session log | **live** |
+| `problemset` | Fine-grained problem retrieval over the community library | **live** |
+| `blog-writer` | Forest-ready blog authoring: one-concept sections, checkpoints, tutor hand-off | **live** |
+| `submit` | Experience submission (consent-gated) + maintainer improvement flow | **live** |
+| `reader` | Knowledge Forest: digest whole books into typed object vaults | later (Phase 4, runs last) |
 
-The marketplace entry format is validated against the current Claude Code
-plugin schema in Phase 2, when `tutor` is wired and tested on a clean
-machine — treat `marketplace.json` as a draft until then.
+Every entry is validated with `claude plugin validate` before it ships,
+and sources are explicit https URLs — the `github` source type clones
+over SSH and fails for anyone without SSH keys.
 
 Skill folders follow the open Agent Skills standard (SKILL.md), so the
 tools also work in other skill-aware harnesses; the marketplace is the

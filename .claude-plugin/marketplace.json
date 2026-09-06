@@ -21,6 +21,19 @@
         "url": "https://github.com/matsek-fer/library.git"
       },
       "description": "Fine-grained problem retrieval over the community library: ladders by difficulty, build-ups ordered by prerequisites, honest about what the library lacks. Ask for zadaci on a topic."
+    },
+    {
+      "name": "blog-writer",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/matsek-fer/blog-writer.git"
+      },
+      "description": "Guided blog authoring for the library: interview → research → one-concept sections with checkpoints → validated bundle → PR. Say you want to write a blog for the library."
+    },
+    {
+      "name": "submit",
+      "source": "./submit-plugin",
+      "description": "Turn a finished session's experience.md into a personal improvement report, then — with explicit consent on the exact final text — a scrubbed CC BY 4.0 submission to the library. Ships the maintainer's /improve flow too."
     }
   ]
 }
