@@ -34,6 +34,14 @@
       "name": "submit",
       "source": "./submit-plugin",
       "description": "Turn a finished session's experience.md into a personal improvement report, then — with explicit consent on the exact final text — a scrubbed CC BY 4.0 submission to the library. Ships the maintainer's /improve flow too."
+    },
+    {
+      "name": "forest",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/matsek-fer/reader.git"
+      },
+      "description": "Knowledge Forest: digest a paper or book into a typed, linked vault of theorems, proofs and expositions — study it in Obsidian. Run /digest."
     }
   ]
 }

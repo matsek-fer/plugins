@@ -16,7 +16,7 @@ Updates arrive automatically through the marketplace.
 | `problemset` | Fine-grained problem retrieval over the community library | **live** |
 | `blog-writer` | Forest-ready blog authoring: one-concept sections, checkpoints, tutor hand-off | **live** |
 | `submit` | Experience submission (consent-gated) + maintainer improvement flow | **live** |
-| `reader` | Knowledge Forest: digest whole books into typed object vaults | later (Phase 4, runs last) |
+| `forest` | Knowledge Forest: digest a book into a typed vault of theorems, proofs and expositions (slice 1 — the digester) | **live** |
 
 Every entry is validated with `claude plugin validate` before it ships,
 and sources are explicit https URLs — the `github` source type clones
