@@ -77,11 +77,20 @@ header.top {
 }
 
 .body { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; }
-@media (max-width: 860px) { .body { grid-template-columns: 1fr; } aside.side { display: none; } aside.side.open { display: flex; position: fixed; inset: 52px 0 0 0; z-index: 20; } .menu-btn { display: inline-block !important; } }
-.menu-btn { display: none; }
+/* Wide screens fold the list away into the header button; narrow ones
+   never show it beside the text and open it as an overlay instead, so
+   "collapsed" only means something above the breakpoint. */
+@media (min-width: 861px) {
+  .body.collapsed { grid-template-columns: minmax(0, 1fr); }
+  .body.collapsed aside.side { display: none; }
+}
 
 /* ---------- sidebar ---------- */
 aside.side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); background: var(--surface); }
+/* After the base rule, not before it: at equal specificity the later rule
+   wins, and above it this one lost, leaving the list stacked over the
+   text on phones. */
+@media (max-width: 860px) { .body { grid-template-columns: 1fr; } aside.side { display: none; } aside.side.open { display: flex; position: fixed; inset: 52px 0 0 0; z-index: 20; } }
 .side-head { padding: 12px 14px 8px; display: grid; gap: 8px; }
 .search { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); font: inherit; color: inherit; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -196,7 +205,7 @@ label.field textarea { min-height: 110px; resize: vertical; }
 <body>
 <div class="app">
   <header class="top">
-    <button class="btn menu-btn" id="menuBtn" type="button" aria-label="Popis radova">☰</button>
+    <button class="btn menu-btn" id="menuBtn" type="button" aria-label="Popis radova" aria-controls="side" aria-expanded="true" title="Sakrij ili prikaži popis radova">☰</button>
     <div class="brand">Mat<b>Sek</b><span class="wide"> urednik</span></div>
     <div class="snap" id="snap"></div>
     <div class="spacer"></div>
@@ -481,7 +490,7 @@ function renderList() {
     for (const it of its) {
       list.append(el("button", {
         class: "it", type: "button", "aria-current": String(S.current?.key === it.key), title: it.key,
-        onclick: () => { openItem(it.key); $("#side").classList.remove("open"); },
+        onclick: () => { openItem(it.key); $("#side").classList.remove("open"); syncSide(); },
       }, el("span", { class: "t" }, itemChanged(it) ? el("span", { class: "dot", "aria-label": "promijenjeno" }) : null, it.title),
          el("span", { class: "k" }, it.kind === "tree" ? (it.taxon || "").slice(0, 4) : it.lang)));
     }
@@ -860,8 +869,31 @@ async function wireCapabilities() {
   }
 }
 
+/* ---------------- sidebar toggle ---------------- */
+// Folding the list away is a per-viewer reading preference, so it lives in
+// this browser, not in the artifact's db.
+const NARROW = window.matchMedia("(max-width: 860px)");
+const SIDE_KEY = "matsek-editor:v1:side-collapsed";
+function syncSide() {
+  const shown = NARROW.matches ? $("#side").classList.contains("open") : !$(".body").classList.contains("collapsed");
+  $("#menuBtn").setAttribute("aria-expanded", String(shown));
+}
+function toggleSide() {
+  if (NARROW.matches) $("#side").classList.toggle("open");
+  else {
+    const collapsed = $(".body").classList.toggle("collapsed");
+    try { localStorage.setItem(SIDE_KEY, collapsed ? "1" : ""); } catch {}
+  }
+  syncSide();
+}
+
 /* ---------------- boot ---------------- */
 async function boot() {
+  // Before the first await, so a folded list never flashes open on load.
+  try { if (localStorage.getItem(SIDE_KEY)) $(".body").classList.add("collapsed"); } catch {}
+  $("#menuBtn").addEventListener("click", toggleSide);
+  NARROW.addEventListener("change", syncSide);
+  syncSide();
   $("#docWrap").append(el("p", { class: "empty" }, "Učitavam knjižnicu…"));
   try { S.lib = await (await fetch("library.json")).json(); }
   catch (e) { $("#docWrap").replaceChildren(el("div", { class: "empty" }, el("h1", {}, "Snimka knjižnice nije učitana"), el("p", {}, "library.json nije pronađen uz stranicu. Pokreni skill ponovno da ga izgradi."))); return; }
@@ -889,7 +921,6 @@ async function boot() {
   $("#search").addEventListener("input", (e) => { S.query = e.target.value; renderList(); });
   $("#changesBtn").addEventListener("click", showChanges);
   $("#submitBtn").addEventListener("click", showSubmit);
-  $("#menuBtn").addEventListener("click", () => $("#side").classList.toggle("open"));
   const fromHash = () => { const k = decodeURIComponent(location.hash.slice(1)).replace("--", "/"); if (S.items.has(k)) openItem(k); else renderDoc(); };
   window.addEventListener("hashchange", fromHash);
   fromHash();
