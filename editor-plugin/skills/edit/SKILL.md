@@ -93,6 +93,12 @@ also stops you overwriting a submission the member changed meanwhile.
    - When they're done, press **Pošalji u knjižnicu**, then tell you
      "Pošalji moju MatSek prijavu".
 
+   A comment sent to Claude reaches only a session that watches the
+   editor: the one that published it, while it stays open. Tell the
+   member to keep this session open while they work. In a later session,
+   start watching the editor (in Claude Code, `ArtifactComments` with
+   `action: "watch"` and its url) before they comment.
+
 **No artifact tool in this session** (e.g. plain local Claude Code): build
 anyway, then start `python3 -m http.server` in `<out>` and give the
 member `http://localhost:8000/`. Opening it as a `file://` URL won't work
