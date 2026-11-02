@@ -212,7 +212,12 @@ a question, a discussion, or a change bigger than one block.
    fix it, and make the fix only with their yes.
 3. **A change:** write the new text, then produce the draft with
    `draft.mjs replace` (one block) or `draft.mjs fromtext` (several
-   blocks or the whole file). Write it to `drafts/<path ~>`. The open
+   blocks or the whole file). Build it on the draft as it stands now,
+   not on the snapshot: re-read `drafts/<path ~>` and the thread first,
+   because the member keeps editing and an automatic reply may already
+   have made the change. Write it to `drafts/<path ~>` pinned to the
+   version you read. If the write is refused, someone changed the draft
+   meanwhile: re-read it and merge, never overwrite. The open
    editor picks it up live. Blocks you wrote are marked `ai: true`, so
    the provenance step in flow B sees them. Keep the file's language,
    notation and wikilinks. All math must pass KaTeX. Never invent
