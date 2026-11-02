@@ -42,6 +42,11 @@
         "url": "https://github.com/matsek-fer/reader.git"
       },
       "description": "Knowledge Forest: digest a paper or book into a typed, linked vault of theorems, proofs and expositions — study it in Obsidian. Run /digest."
+    },
+    {
+      "name": "editor",
+      "source": "./editor-plugin",
+      "description": "MatSek urednik: edit any library file block by block in your own editor page, comment for quick or larger edits, and submit — Claude opens the pull request with your GitHub account. Say \"otvori urednik\"."
     }
   ]
 }

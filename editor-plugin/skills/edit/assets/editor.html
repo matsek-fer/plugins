@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MatSek urednik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="katex/katex.min.css">
+<script src="vendor/katex.min.js"></script>
+<script src="vendor/marked.min.js"></script>
+<style>
+:root {
+  --bg: #FAFAF7; --surface: #FFFFFF; --surface-2: #F3F2EC; --ink: #1C1B17; --muted: #5C5A52; --faint: #8A877D;
+  --border: #E3E1D8; --accent: #BC530E; --accent-ink: #9C4409; --accent-soft: #F7E9DC;
+  --good: #3A6B35; --good-soft: #E6EFE3; --warn: #8A5A00; --warn-soft: #F6EDD6; --bad: #A23B2C; --bad-soft: #F6E1DC;
+  --f-head: "Bricolage Grotesque", "Source Sans 3", system-ui, sans-serif;
+  --f-ui: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-text: "Source Serif 4", Georgia, Cambria, serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161511; --surface: #1E1D18; --surface-2: #26241E; --ink: #ECEAE2; --muted: #A9A69B; --faint: #7E7B70;
+    --border: #35332B; --accent: #EE8B3E; --accent-ink: #F2A059; --accent-soft: #33271C;
+    --good: #8FBF88; --good-soft: #1F2A1D; --warn: #D8A94E; --warn-soft: #2E2615; --bad: #E58A7A; --bad-soft: #35201C;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-ui); }
+button { font: inherit; color: inherit; }
+a { color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hidden { display: none !important; }
+
+/* ---------- app frame ---------- */
+.app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+header.top {
+  display: flex; align-items: center; gap: 14px; padding: 10px 18px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.brand { font: 700 1.08rem var(--f-head); letter-spacing: -0.01em; white-space: nowrap; }
+.brand b { color: var(--accent); }
+.snap { font: 0.78rem var(--f-mono); color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .spacer { flex: 1; }
+.pill { font-size: 0.78rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.pill.on { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--border)); }
+.btn {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 7px; padding: 6px 12px;
+  font-weight: 600; font-size: 0.9rem; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-ink); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn .n { display: inline-block; min-width: 1.4em; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 0.8rem; text-align: center; }
+.btn.primary .n { background: rgba(255,255,255,.25); color: #fff; }
+
+.body { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; }
+@media (max-width: 860px) { .body { grid-template-columns: 1fr; } aside.side { display: none; } aside.side.open { display: flex; position: fixed; inset: 52px 0 0 0; z-index: 20; } .menu-btn { display: inline-block !important; } }
+.menu-btn { display: none; }
+
+/* ---------- sidebar ---------- */
+aside.side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); background: var(--surface); }
+.side-head { padding: 12px 14px 8px; display: grid; gap: 8px; }
+.search { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); font: inherit; color: inherit; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { border: 1px solid var(--border); background: transparent; border-radius: 999px; padding: 1px 9px; font-size: 0.8rem; cursor: pointer; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.list { overflow-y: auto; padding: 4px 6px 20px; flex: 1; }
+.group-h { font: 700 0.7rem var(--f-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); padding: 12px 8px 4px; }
+.it { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: baseline; width: 100%; text-align: left; border: 0; background: transparent; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+.it:hover { background: var(--surface-2); }
+.it[aria-current="true"] { background: var(--accent-soft); }
+.it .t { font-size: 0.9rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
+.it .k { font: 0.68rem var(--f-mono); color: var(--faint); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 6px; vertical-align: 1px; }
+
+/* ---------- main ---------- */
+main { overflow-y: auto; min-height: 0; }
+.doc-wrap { max-width: 50rem; margin: 0 auto; padding: 26px 28px 120px; }
+.empty { color: var(--muted); padding: 60px 10px; text-align: center; }
+.empty h1 { font: 700 1.9rem var(--f-head); color: var(--ink); margin: 0 0 10px; }
+.empty p { max-width: 34rem; margin: 8px auto; }
+.item-h .eyebrow { font: 700 0.72rem var(--f-ui); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-ink); }
+.item-h h1 { font: 700 1.75rem/1.15 var(--f-head); margin: 6px 0 4px; text-wrap: balance; }
+.item-h .path { font: 0.78rem var(--f-mono); color: var(--faint); }
+.note { margin: 14px 0 0; padding: 9px 12px; border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 0 7px 7px 0; font-size: 0.88rem; }
+.note.info { border-color: var(--accent); background: var(--accent-soft); }
+.note a { cursor: pointer; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 18px 0 6px; border-bottom: 1px solid var(--border); }
+.tab { border: 0; background: transparent; padding: 7px 12px; font: 600 0.86rem var(--f-mono); color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab .dot { margin-left: 6px; margin-right: 0; }
+
+/* ---------- blocks ---------- */
+.doc { font: 17px/1.62 var(--f-text); }
+.blk { position: relative; padding: 2px 12px 2px 14px; margin: 0 -14px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
+.blk:hover { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.blk.changed { border-left-color: var(--accent); }
+.blk.added { border-left-color: var(--good); }
+.blk .tools { position: absolute; top: 2px; right: 4px; display: none; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 2px; box-shadow: 0 2px 8px rgba(0,0,0,.08); z-index: 2; font-family: var(--f-ui); }
+.blk:hover > .tools, .blk:focus-within > .tools { display: flex; }
+.tools button { border: 0; background: transparent; padding: 3px 8px; font-size: 0.78rem; font-weight: 600; border-radius: 5px; cursor: pointer; color: var(--muted); }
+.tools button:hover { background: var(--surface-2); color: var(--ink); }
+.blk .badge { font: 600 0.68rem var(--f-ui); letter-spacing: 0.04em; color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
+.blk .ai-row { font: 0.8rem var(--f-ui); color: var(--muted); margin: 2px 0 6px; display: flex; gap: 8px; align-items: center; }
+.blk .ai-row button { border: 1px solid var(--border); background: var(--surface); border-radius: 5px; padding: 0 8px; cursor: pointer; font-size: 0.78rem; }
+.doc h1, .doc h2, .doc h3, .doc h4 { font-family: var(--f-head); line-height: 1.2; margin: 1.1em 0 0.4em; }
+.doc h1 { font-size: 1.6rem; } .doc h2 { font-size: 1.35rem; } .doc h3 { font-size: 1.12rem; }
+.doc p { margin: 0.55em 0; }
+.doc pre { font: 0.82rem/1.5 var(--f-mono); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+.doc code { font: 0.86em var(--f-mono); background: var(--surface-2); border-radius: 4px; padding: 0 4px; }
+.doc pre code { background: none; padding: 0; }
+.doc table { border-collapse: collapse; font-size: 0.93rem; margin: 0.6em 0; display: block; overflow-x: auto; }
+.doc th, .doc td { border-bottom: 1px solid var(--border); padding: 5px 12px 5px 0; text-align: left; vertical-align: top; }
+.doc blockquote { margin: 0.6em 0; padding-left: 14px; border-left: 3px solid var(--border); color: var(--muted); }
+.doc .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.doc a.wl { text-decoration: none; border-bottom: 1px dashed currentColor; cursor: pointer; }
+.doc a.wl.missing { color: var(--bad); }
+.fm summary { cursor: pointer; padding: 4px 0; }
+.fm .lbl, .codeblk .lbl { font: 700 0.68rem var(--f-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); display: block; margin-top: 6px; }
+.fm pre, .codeblk pre { margin: 4px 0 8px; }
+.ghost { margin: 4px -14px; padding: 4px 14px; border-left: 3px solid var(--bad); background: var(--bad-soft); border-radius: 0 6px 6px 0; font: 0.85rem var(--f-ui); color: var(--muted); display: flex; gap: 10px; align-items: center; }
+.ghost s { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ghost button { border: 1px solid var(--border); background: var(--surface); border-radius: 5px; padding: 1px 8px; cursor: pointer; font-size: 0.78rem; }
+.math-err { color: var(--bad); font-family: var(--f-mono); font-size: 0.85em; }
+
+/* ---------- block editor ---------- */
+.editor { margin: 6px -14px 10px; padding: 10px 14px 12px; border: 1px solid var(--accent); border-radius: 9px; background: var(--surface); font-family: var(--f-ui); }
+.editor textarea { width: 100%; min-height: 90px; resize: vertical; font: 0.88rem/1.55 var(--f-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 9px 10px; tab-size: 2; }
+.editor .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.editor .hint { font-size: 0.78rem; color: var(--faint); margin-left: auto; }
+.editor .preview { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font: 16px/1.6 var(--f-text); }
+.editor .preview-lbl { font: 700 0.68rem var(--f-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.issues { margin: 8px 0 0; padding: 7px 10px; border-radius: 7px; background: var(--bad-soft); color: var(--bad); font-size: 0.82rem; }
+.issues.ok { background: var(--good-soft); color: var(--good); }
+
+/* ---------- drawer & dialog ---------- */
+.overlay { position: fixed; inset: 0; background: rgba(20,18,12,.35); z-index: 30; display: flex; justify-content: flex-end; }
+.panel { width: min(720px, 100%); height: 100%; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+.panel.center { margin: auto; height: auto; max-height: 92vh; width: min(640px, 94vw); border: 1px solid var(--border); border-radius: 12px; }
+.overlay.center { justify-content: center; align-items: center; }
+.panel-h { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.panel-h h2 { font: 700 1.15rem var(--f-head); margin: 0; flex: 1; }
+.panel-b { overflow-y: auto; padding: 14px 18px 22px; }
+.x { border: 0; background: transparent; font-size: 1.3rem; cursor: pointer; color: var(--muted); line-height: 1; }
+.chg-file { margin: 0 0 18px; }
+.chg-file h3 { font: 600 0.86rem var(--f-mono); margin: 0 0 6px; display: flex; gap: 8px; align-items: center; }
+.chg-file h3 a { font-family: var(--f-ui); font-weight: 600; font-size: 0.8rem; }
+.diff { font: 0.78rem/1.5 var(--f-mono); border: 1px solid var(--border); border-radius: 7px; overflow-x: auto; background: var(--bg); }
+.diff div { white-space: pre-wrap; word-break: break-word; padding: 0 10px; }
+.diff .add { background: var(--good-soft); }
+.diff .del { background: var(--bad-soft); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--bad) 50%, transparent); }
+.diff .ctx { color: var(--faint); }
+.diff .gap { color: var(--faint); text-align: center; background: var(--surface-2); }
+label.field { display: grid; gap: 4px; margin: 0 0 12px; font-weight: 600; font-size: 0.88rem; }
+label.field input, label.field textarea { font: 400 0.92rem var(--f-ui); padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--ink); }
+label.field textarea { min-height: 110px; resize: vertical; }
+.affirm { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; margin: 4px 0 14px; background: var(--bg); }
+.affirm h4 { margin: 0 0 6px; font: 700 0.82rem var(--f-ui); }
+.affirm label { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 0.86rem; margin: 6px 0; align-items: start; }
+.affirm input { margin-top: 4px; }
+.status { padding: 10px 12px; border-radius: 8px; margin: 10px 0; font-size: 0.9rem; }
+.status.ready { background: var(--accent-soft); }
+.status.opened { background: var(--good-soft); }
+.status.failed { background: var(--bad-soft); }
+.copyline { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+.copyline code { flex: 1; font: 0.85rem var(--f-mono); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 0.88rem; z-index: 50; max-width: 90vw; }
+.muted { color: var(--muted); }
+.small { font-size: 0.82rem; }
+@media (prefers-reduced-motion: no-preference) { .blk, .tab, .it { transition: background-color .12s; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button class="btn menu-btn" id="menuBtn" type="button" aria-label="Popis radova">☰</button>
+    <div class="brand">Mat<b>Sek</b> urednik</div>
+    <div class="snap" id="snap"></div>
+    <div class="spacer"></div>
+    <span class="pill" id="storePill" title="Gdje se spremaju nacrti">…</span>
+    <span class="pill" id="aiPill" title="Brze izmjene kroz komentare (Send to Claude)">…</span>
+    <button class="btn" id="changesBtn" type="button">Promjene<span class="n" id="chgN">0</span></button>
+    <button class="btn primary" id="submitBtn" type="button">Pošalji u knjižnicu</button>
+  </header>
+  <div class="body">
+    <aside class="side" id="side">
+      <div class="side-head">
+        <input class="search" id="search" type="search" placeholder="Traži naslov, id, pojam…" aria-label="Traži">
+        <div class="chips" id="chips"></div>
+      </div>
+      <nav class="list" id="list" aria-label="Radovi u knjižnici"></nav>
+    </aside>
+    <main id="main"><div class="doc-wrap" id="docWrap"></div></main>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   MatSek urednik — edit any library file (blogs, trees, problems,
+   proofs, the concept registry) block by block, comment on blocks,
+   apply quick edits through "Send to Claude", and hand a submission to
+   Claude, who opens the pull request.
+
+   Runs in two places:
+   - published as a Claude artifact: drafts and submissions live in the
+     artifact's db (Claude reads them there), comments use the platform's
+     own comment mode, quick edits use the viewer's own Claude;
+   - opened as a local file: drafts in localStorage, the submission is
+     downloaded as JSON.
+   ===================================================================== */
+
+const KIND = {
+  blog: { label: "Blog", group: "Blogovi" },
+  tree: { label: "Stablo", group: "Stabla šume" },
+  problem: { label: "Zadatak", group: "Zadaci" },
+  proof: { label: "Dokaz", group: "Dokazi" },
+  meta: { label: "Zajedničko", group: "Zajedničke datoteke" },
+};
+const FILTERS = [["all", "Sve"], ["blog", "Blogovi"], ["tree", "Stabla"], ["problem", "Zadaci"], ["proof", "Dokazi"], ["meta", "Ostalo"], ["changed", "Promijenjeno"]];
+
+const S = {
+  lib: null, items: new Map(), owner: new Map(), digestedInto: new Map(),
+  orig: new Map(),        // path -> original blocks (cache)
+  drafts: new Map(),      // path -> { blocks, base_commit, updated }
+  current: null,          // { key, path }
+  editing: null,          // block id being edited
+  undo: new Map(),        // block id -> previous raw (quick edits, this visit)
+  aiTouched: new Set(),   // block ids changed by a quick edit this visit
+  filter: "all", query: "",
+  store: null, caps: {},
+};
+
+/* ---------------- small helpers ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (k === "html") n.innerHTML = v;
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return n;
+}
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function toast(msg, ms = 2600) {
+  const t = el("div", { class: "toast", role: "status" }, msg);
+  document.body.append(t); setTimeout(() => t.remove(), ms);
+  return t;
+}
+// Discarding a whole file's draft is the one destructive action: undoable for a few seconds.
+function undoToast(path, draft) {
+  const t = toast("", 7000);
+  t.append(`Odbačene promjene u ${path.split("/").pop()}. `,
+    el("button", { class: "btn", type: "button", style: "padding:1px 8px;margin-left:6px", onclick: () => { setDraft(path, draft.blocks); renderDoc(); t.remove(); } }, "Vrati"));
+}
+// FNV-1a, base36 — stable short hashes for block ids. Mirrored in
+// scripts/apply-submission.mjs; change both together.
+function fnv(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
+const rid = () => Math.random().toString(36).slice(2, 7);
+const shortDate = (iso) => { try { return new Date(iso).toLocaleDateString("hr-HR"); } catch { return iso; } };
+
+/* ---------------- splitting files into blocks (lossless) ---------------- */
+function splitText(path, text) {
+  if (path.endsWith(".md")) {
+    const fm = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.exec(text);
+    const head = fm ? fm[0] : "";
+    const parts = [];
+    for (const t of marked.lexer(text.slice(head.length))) {
+      if (t.type === "space" && parts.length) parts[parts.length - 1] += t.raw;
+      else parts.push(t.raw);
+    }
+    if (parts.length > 1 && !parts[0].trim()) { const lead = parts.shift(); parts[0] = lead + parts[0]; }
+    return { parts: head ? [head, ...parts] : parts, fm: !!head };
+  }
+  if (/\.ya?ml$/.test(path)) {
+    const parts = []; let last = 0; const re = /\n[ \t]*\n/g; let m;
+    while ((m = re.exec(text))) { parts.push(text.slice(last, m.index + m[0].length)); last = m.index + m[0].length; }
+    if (last < text.length) parts.push(text.slice(last));
+    return { parts: parts.length ? parts : [text], fm: false };
+  }
+  return { parts: [text], fm: false };
+}
+function origBlocks(path) {
+  if (!S.orig.has(path)) {
+    const fh = fnv(path);
+    const { parts, fm } = splitText(path, S.lib.files[path] ?? "");
+    S.orig.set(path, parts.map((raw, i) => ({ id: `${fh}-${i}`, raw, fm: fm && i === 0 })));
+  }
+  return S.orig.get(path);
+}
+const blocksOf = (path) => (S.drafts.has(path) ? S.drafts.get(path).blocks : origBlocks(path));
+const textOf = (blocks) => blocks.map((b) => b.raw).join("");
+const isChanged = (path) => S.drafts.has(path);
+const itemChanged = (it) => it.files.some(isChanged);
+
+/* ---------------- markdown + math rendering ---------------- */
+// Port of library/scripts/lib/bundles.mjs extractMath: the same masking
+// rules the library's CI applies, so what renders here renders there.
+// wrap: let inline math cross a single line break (never a blank line),
+// as KaTeX auto-render on the library site does; CI's check stays single-line.
+function extractMath(md, wrap = false) {
+  let masked = md;
+  const blank = (m) => m.replace(/[^\n]/g, " ");
+  const fm = /^---\r?\n[\s\S]*?\r?\n---(\r?\n|$)/.exec(masked);
+  if (fm) masked = blank(fm[0]) + masked.slice(fm[0].length);
+  masked = masked.replace(/```[\s\S]*?(```|$)/g, blank).replace(/`[^`\n]*`/g, blank);
+  const segs = [];
+  masked = masked.replace(/\$\$([\s\S]+?)\$\$/g, (m, _t, idx) => { segs.push({ tex: md.slice(idx + 2, idx + m.length - 2), display: true }); return blank(m); });
+  const inline = wrap ? /(?<![\\$])\$((?:[^$\n]|\n(?![ \t]*\n))+?)(?<!\\)\$/g : /(?<![\\$])\$([^$\n]+?)(?<!\\)\$/g; let m;
+  while ((m = inline.exec(masked)) !== null) segs.push({ tex: md.slice(m.index + 1, m.index + m[0].length - 1), display: false });
+  return segs;
+}
+function mathIssues(md) {
+  const out = [];
+  if (typeof katex === "undefined") return out;
+  for (const s of extractMath(md)) {
+    try { katex.renderToString(s.tex, { displayMode: s.display, throwOnError: true, strict: "ignore" }); }
+    catch (e) { out.push(`${s.display ? "$$" : "$"}${s.tex.slice(0, 60)}${s.tex.length > 60 ? "…" : ""} — ${String(e.message || e).replace(/^KaTeX parse error: /, "")}`); }
+  }
+  return out;
+}
+function renderTex(tex, display) {
+  if (typeof katex === "undefined") return esc(display ? `$$${tex}$$` : `$${tex}$`);
+  try { return katex.renderToString(tex, { displayMode: display, throwOnError: false, strict: "ignore", output: "htmlAndMathml" }); }
+  catch { return `<span class="math-err">${esc(tex)}</span>`; }
+}
+function treeIdExists(id) { return S.items.has(`tree/${id}`); }
+function renderMd(md) {
+  const segs = extractMath(md, true);
+  const stash = []; let out = md;
+  const uniq = [...new Map(segs.map((s) => [(s.display ? `$$${s.tex}$$` : `$${s.tex}$`), s])).entries()].sort((a, b) => b[0].length - a[0].length);
+  for (const [lit, s] of uniq) { const tok = `@@MATH${stash.length}@@`; stash.push(renderTex(s.tex, s.display)); out = out.split(lit).join(tok); }
+  const wl = [];
+  out = out.replace(/\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g, (_m, id, text) => {
+    id = id.trim(); const tok = `@@WL${wl.length}@@`;
+    wl.push(`<a class="wl${treeIdExists(id) ? "" : " missing"}" href="#" data-tree="${esc(id)}" title="${esc(id)}">${esc((text || id).trim())}</a>`);
+    return tok;
+  });
+  let html = marked.parse(out, { gfm: true, async: false });
+  stash.forEach((h, i) => { html = html.split(`@@MATH${i}@@`).join(h); });
+  wl.forEach((h, i) => { html = html.split(`@@WL${i}@@`).join(h); });
+  return sanitize(html);
+}
+// Library text and quick-edit output are rendered as HTML: strip anything active.
+function sanitize(html) {
+  const t = document.createElement("template"); t.innerHTML = html;
+  t.content.querySelectorAll("script,style,iframe,object,embed,link,meta,form,input,button,textarea,select").forEach((n) => n.remove());
+  t.content.querySelectorAll("*").forEach((n) => {
+    for (const a of [...n.attributes]) {
+      const v = a.value.trim().toLowerCase();
+      if (a.name.startsWith("on") || ((a.name === "href" || a.name === "src" || a.name === "xlink:href") && (v.startsWith("javascript:") || v.startsWith("data:text")))) n.removeAttribute(a.name);
+    }
+    if (n.tagName === "IMG") { const alt = n.getAttribute("alt") || n.getAttribute("src") || "slika"; n.replaceWith(el("span", { class: "muted small" }, `[slika: ${alt}]`)); }
+  });
+  return t.innerHTML;
+}
+function blockHtml(path, b) {
+  if (b.fm) { const n = b.raw.trimEnd().split("\n").length; return `<details class="fm"><summary class="lbl">Frontmatter (YAML) · ${n} redaka</summary><pre>${esc(b.raw.trimEnd())}</pre></details>`; }
+  if (!path.endsWith(".md")) return `<div class="codeblk"><span class="lbl">${esc(path.split("/").pop())}</span><pre>${esc(b.raw.trimEnd())}</pre></div>`;
+  return renderMd(b.raw) || `<p class="muted small">(prazan blok)</p>`;
+}
+
+/* ---------------- storage: artifact db, or this browser ---------------- */
+const encPath = (p) => p.replace(/\//g, "~");
+function localStore() {
+  const KEY = "matsek-editor:v1:drafts", SUB = "matsek-editor:v1:submissions";
+  const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || "{}"); } catch { return {}; } };
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { toast("Preglednik ne dopušta lokalno spremanje — nacrt vrijedi samo do zatvaranja stranice."); } };
+  return {
+    kind: "local",
+    async loadAll() { return read(KEY); },
+    async save(path, draft) { const all = read(KEY); if (draft) all[path] = draft; else delete all[path]; write(KEY, all); },
+    subscribe() {},
+    async submit(sub) { const all = read(SUB); all[sub.id] = sub; write(SUB, all); return sub.id; },
+    watchSubmission() { return () => {}; },
+  };
+}
+function dbStore(db) {
+  const queues = new Map(); // one write at a time per document
+  const enqueue = (key, fn) => { const p = (queues.get(key) || Promise.resolve()).then(fn, fn); queues.set(key, p.catch(() => {})); return p; };
+  return {
+    kind: "db",
+    async loadAll() {
+      const snap = await db.collection("drafts").get(); const out = {};
+      for (const d of snap.docs) { const v = d.data(); if (v && v.path) out[v.path] = v; }
+      return out;
+    },
+    save(path, draft) {
+      const ref = db.doc("drafts/" + encPath(path));
+      return enqueue(path, () => (draft ? ref.set(draft) : ref.delete())).catch((e) => {
+        toast(e && e.code === "quota_exceeded" ? "Spremište je puno — pošalji ili očisti stare nacrte." : "Nacrt nije spremljen (" + (e && e.code) + ").");
+      });
+    },
+    // Claude may edit a draft directly (bigger rewrites from a comment):
+    // apply those writes live, ignoring the echo of our own.
+    subscribe(onRemote) {
+      db.collection("drafts").onSnapshot((snap) => {
+        if (snap.metadata.hasPendingWrites) return;
+        for (const ch of snap.docChanges()) {
+          const v = ch.doc.data(); if (!v || !v.path) continue;
+          onRemote(v.path, ch.type === "removed" ? null : v);
+        }
+      }, () => {});
+    },
+    async submit(sub) { await db.doc("submissions/" + sub.id).set(sub); return sub.id; },
+    watchSubmission(id, fn) { return db.doc("submissions/" + id).onSnapshot((s) => fn(s.exists ? s.data() : null), () => {}); },
+    async recentSubmissions() {
+      try { const q = await db.collection("submissions").orderBy("created", "desc").limit(5).get(); return q.docs.map((d) => d.data()); }
+      catch { return []; }
+    },
+  };
+}
+function setDraft(path, blocks) {
+  const orig = origBlocks(path);
+  const same = blocks.length === orig.length && blocks.every((b, i) => b.id === orig[i].id && b.raw === orig[i].raw);
+  if (same) { S.drafts.delete(path); S.store.save(path, null); }
+  else {
+    // `ai` marks text a model drafted (a quick edit, or Claude editing the
+    // draft): the provenance policy makes ai-assisted mandatory for it, so
+    // the flag survives later hand edits and travels with the submission.
+    const draft = { path, base_commit: S.lib.commit, updated: new Date().toISOString(),
+      blocks: blocks.map(({ id, raw, fm, ai }) => Object.assign({ id, raw }, fm ? { fm: true } : null, ai ? { ai: true } : null)) };
+    S.drafts.set(path, draft); S.store.save(path, draft);
+  }
+  refreshChrome();
+}
+
+/* ---------------- sidebar ---------------- */
+function buildChips() {
+  const box = $("#chips"); box.replaceChildren();
+  for (const [k, label] of FILTERS) {
+    box.append(el("button", { class: "chip", type: "button", "aria-pressed": String(S.filter === k), onclick: () => { S.filter = k; buildChips(); renderList(); } }, label));
+  }
+}
+function renderList() {
+  const q = S.query.trim().toLowerCase();
+  const list = $("#list"); list.replaceChildren();
+  const groups = new Map();
+  for (const it of S.items.values()) {
+    if (S.filter === "changed" ? !itemChanged(it) : S.filter !== "all" && it.kind !== S.filter) continue;
+    if (q && !(`${it.title} ${it.key} ${it.taxon || ""} ${(it.teaches || []).join(" ")}`.toLowerCase().includes(q))) continue;
+    const g = KIND[it.kind].group; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(it);
+  }
+  if (!groups.size) list.append(el("p", { class: "muted small", style: "padding:10px" }, "Ništa ne odgovara."));
+  for (const [g, its] of groups) {
+    list.append(el("div", { class: "group-h" }, `${g} · ${its.length}`));
+    for (const it of its) {
+      list.append(el("button", {
+        class: "it", type: "button", "aria-current": String(S.current?.key === it.key), title: it.key,
+        onclick: () => { openItem(it.key); $("#side").classList.remove("open"); },
+      }, el("span", { class: "t" }, itemChanged(it) ? el("span", { class: "dot", "aria-label": "promijenjeno" }) : null, it.title),
+         el("span", { class: "k" }, it.kind === "tree" ? (it.taxon || "").slice(0, 4) : it.lang)));
+    }
+  }
+}
+function refreshChrome() {
+  $("#chgN").textContent = S.drafts.size;
+  renderList();
+}
+
+/* ---------------- document view ---------------- */
+function openItem(key, path) {
+  const it = S.items.get(key); if (!it) return;
+  S.current = { key, path: path && it.files.includes(path) ? path : it.files[0] };
+  S.editing = null;
+  try { history.replaceState(null, "", "#" + key.replace("/", "--")); } catch {}
+  renderList(); renderDoc();
+  $("#main").scrollTop = 0;
+}
+function renderDoc() {
+  const wrap = $("#docWrap"); wrap.replaceChildren();
+  if (!S.current) { wrap.append(welcome()); return; }
+  const it = S.items.get(S.current.key), path = S.current.path;
+  const head = el("div", { class: "item-h" },
+    el("div", { class: "eyebrow" }, KIND[it.kind].label + (it.taxon ? " · " + it.taxon : "") + (it.lang ? " · " + it.lang : "")),
+    el("h1", {}, it.title),
+    el("div", { class: "path" }, it.folder + (it.kind === "tree" ? "/" + path.split("/").pop() : "/")));
+  wrap.append(head);
+  // D-007: trees are canonical; a digested blog's corrections belong in its trees too.
+  if (it.kind === "blog") {
+    const trees = S.digestedInto.get(it.key.replace(/^blog\//, "blog/")) || [];
+    if (trees.length) wrap.append(el("div", { class: "note" }, `Ovaj blog je probavljen u ${trees.length} stabala šume (D-007: kanonska su stabla). Ispravak unesi i u stablo koje ga nosi: `,
+      ...trees.slice(0, 8).flatMap((t, i) => [i ? ", " : "", el("a", { onclick: () => openItem(t.key) }, t.title)]), trees.length > 8 ? " …" : ""));
+  }
+  if (it.kind === "tree" && it.digested_from) {
+    const src = S.items.get(it.digested_from);
+    wrap.append(el("div", { class: "note info" }, "Stablo je nastalo probavom ", src ? el("a", { onclick: () => openItem(src.key) }, src.title) : it.digested_from, ". Promjena ovdje ne mijenja izvorni blog."));
+  }
+  if (S.drafts.has(path) && S.drafts.get(path).base_commit !== S.lib.commit) {
+    wrap.append(el("div", { class: "note" }, "Ovaj nacrt je napravljen na starijoj snimci knjižnice. Claude će ga pri slanju prenijeti na najnoviju verziju i javiti ako se nešto sudara."));
+  }
+  if (it.files.length > 1) {
+    const tabs = el("div", { class: "tabs", role: "tablist" });
+    for (const f of it.files) tabs.append(el("button", { class: "tab", role: "tab", type: "button", "aria-selected": String(f === path), onclick: () => { S.current.path = f; S.editing = null; renderDoc(); } },
+      f.split("/").pop(), isChanged(f) ? el("span", { class: "dot" }) : null));
+    wrap.append(tabs);
+  } else wrap.append(el("div", { style: "height:14px" }));
+  if (path.endsWith("annotation.md")) wrap.append(el("div", { class: "note info" }, "annotation.md je uvijek na engleskom (D-003): opisuje tehnike i princip, ne prepričava zadatak — to je tekst koji se ugrađuje u pretraživanje."));
+  if (path.endsWith("manifest.json")) wrap.append(el("div", { class: "note info" }, "manifest.json je strojna istina: validator provjerava svako polje (teaches/requires moraju postojati u registru pojmova)."));
+
+  const doc = el("div", { class: "doc", id: "doc" });
+  const blocks = blocksOf(path), orig = origBlocks(path);
+  const origById = new Map(orig.map((b) => [b.id, b]));
+  const present = new Set(blocks.map((b) => b.id));
+  // Deleted original blocks, placed after their nearest surviving predecessor.
+  const ghostsAfter = new Map(); // id|"" -> [orig blocks]
+  orig.forEach((b, i) => {
+    if (present.has(b.id)) return;
+    let j = i - 1; while (j >= 0 && !present.has(orig[j].id)) j--;
+    const k = j >= 0 ? orig[j].id : ""; if (!ghostsAfter.has(k)) ghostsAfter.set(k, []); ghostsAfter.get(k).push(b);
+  });
+  const ghost = (b) => el("div", { class: "ghost" }, el("span", {}, "Obrisano:"), el("s", {}, b.raw.trim().slice(0, 140)),
+    el("button", { type: "button", onclick: () => restoreBlock(path, b) }, "Vrati"));
+  (ghostsAfter.get("") || []).forEach((b) => doc.append(ghost(b)));
+  blocks.forEach((b, i) => {
+    doc.append(S.editing === b.id ? blockEditor(path, b, i) : blockView(path, b, i, origById.get(b.id)));
+    (ghostsAfter.get(b.id) || []).forEach((g) => doc.append(ghost(g)));
+  });
+  wrap.append(doc);
+  if (S.editing) { const ta = $("#doc textarea"); if (ta) { ta.focus(); autoGrow(ta); } }
+}
+function blockView(path, b, i, ob) {
+  const state = !ob ? "added" : ob.raw !== b.raw ? "changed" : "";
+  const node = el("div", { class: "blk " + state, id: "b-" + b.id, "data-comment-target": true, "data-block": b.id });
+  node.innerHTML = blockHtml(path, b);
+  const tools = el("div", { class: "tools", "data-uncommentable": true });
+  tools.append(el("button", { type: "button", title: "Uredi blok (dvoklik)", onclick: () => startEdit(b.id) }, "Uredi"));
+  if (S.caps.comments) tools.append(el("button", { type: "button", title: "Komentiraj ovaj blok", onclick: () => commentOn(node) }, "Komentiraj"));
+  if (path.endsWith(".md") && !b.fm) tools.append(el("button", { type: "button", title: "Novi blok ispod", onclick: () => insertAfter(path, i) }, "+ Ispod"));
+  if (state === "changed") tools.append(el("button", { type: "button", title: "Vrati izvorni tekst bloka", onclick: () => revertBlock(path, b.id) }, "Izvorno"));
+  if (!b.fm && blocksOf(path).length > 1) tools.append(el("button", { type: "button", title: "Obriši blok", onclick: () => deleteBlock(path, b.id) }, "Obriši"));
+  node.prepend(tools);
+  if (b.ai) {
+    node.append(el("div", { class: "ai-row", "data-uncommentable": true }, el("span", { class: "badge" }, "AI nacrt"),
+      S.undo.has(b.id) ? "uređeno iz komentara" : "tekst je predložio model — pri slanju se označava kao ai-assisted",
+      S.undo.has(b.id) ? el("button", { type: "button", onclick: () => undoQuick(path, b.id) }, "Poništi") : null));
+  }
+  node.addEventListener("dblclick", (e) => { if (!e.target.closest(".tools,a")) startEdit(b.id); });
+  node.querySelectorAll("a.wl").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); const k = "tree/" + a.dataset.tree; if (S.items.has(k)) openItem(k); else toast("Stablo " + a.dataset.tree + " ne postoji u ovoj snimci."); }));
+  return node;
+}
+function autoGrow(ta) { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 4, window.innerHeight * 0.6) + "px"; }
+function blockEditor(path, b) {
+  const ta = el("textarea", { spellcheck: "false", "aria-label": "Tekst bloka" });
+  ta.value = b.raw;
+  const isMd = path.endsWith(".md") && !b.fm;
+  const preview = el("div", { class: "preview" });
+  const issues = el("div", { class: "issues hidden", role: "status" });
+  let t = 0;
+  const update = () => {
+    autoGrow(ta);
+    if (isMd) { preview.innerHTML = '<div class="preview-lbl">Pregled</div>' + renderMd(ta.value); }
+    const probs = isMd || b.fm ? mathIssues(ta.value) : [];
+    if (path.endsWith(".json")) { try { JSON.parse(ta.value); } catch (e) { probs.push("JSON: " + e.message); } }
+    issues.classList.toggle("hidden", !probs.length);
+    issues.replaceChildren(...probs.slice(0, 6).map((p) => el("div", {}, p)));
+  };
+  ta.addEventListener("input", () => { clearTimeout(t); t = setTimeout(update, 180); });
+  const save = () => {
+    let v = ta.value;
+    if (b.raw.endsWith("\n") && !v.endsWith("\n")) v += "\n"; // keep the block separator
+    if (b.fm && !/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(v)) { toast("Frontmatter mora početi i završiti linijom ---"); return; }
+    S.editing = null;
+    setDraft(path, blocksOf(path).map((x) => (x.id === b.id ? { ...x, raw: v } : x)));
+    renderDoc();
+  };
+  const cancel = () => { S.editing = null; renderDoc(); };
+  ta.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); save(); }
+    else if (e.key === "Escape") { e.preventDefault(); cancel(); }
+  });
+  const box = el("div", { class: "editor", id: "b-" + b.id, "data-uncommentable": true },
+    ta,
+    el("div", { class: "row" },
+      el("button", { class: "btn primary", type: "button", onclick: save }, "Spremi"),
+      el("button", { class: "btn", type: "button", onclick: cancel }, "Odustani"),
+      el("span", { class: "hint" }, "Ctrl+Enter sprema · Esc odustaje")),
+    issues, isMd ? preview : null);
+  setTimeout(update, 0);
+  return box;
+}
+function startEdit(id) { S.editing = id; renderDoc(); }
+function insertAfter(path, i) {
+  const blocks = blocksOf(path).slice();
+  const prev = blocks[i];
+  if (prev && !/\n\s*\n$/.test(prev.raw)) blocks[i] = { ...prev, raw: prev.raw.replace(/\n*$/, "\n\n") };
+  const nb = { id: fnv(path) + "-n" + rid(), raw: "Novi odlomak.\n\n" };
+  blocks.splice(i + 1, 0, nb);
+  setDraft(path, blocks); S.editing = nb.id; renderDoc();
+}
+function deleteBlock(path, id) { setDraft(path, blocksOf(path).filter((b) => b.id !== id)); renderDoc(); }
+function revertBlock(path, id) { const o = origBlocks(path).find((b) => b.id === id); setDraft(path, blocksOf(path).map((b) => (b.id === id ? { ...o } : b))); renderDoc(); }
+function restoreBlock(path, ob) {
+  const orig = origBlocks(path), blocks = blocksOf(path).slice();
+  const oi = orig.findIndex((b) => b.id === ob.id);
+  let at = 0; // after the nearest preceding original block still present
+  for (let j = oi - 1; j >= 0; j--) { const k = blocks.findIndex((b) => b.id === orig[j].id); if (k >= 0) { at = k + 1; break; } }
+  blocks.splice(at, 0, { ...ob });
+  setDraft(path, blocks); renderDoc();
+}
+function undoQuick(path, id) {
+  const prev = S.undo.get(id); if (prev == null) return;
+  S.undo.delete(id); S.aiTouched.delete(id);
+  setDraft(path, blocksOf(path).map((b) => (b.id === id ? prev : b)));
+  renderDoc(); toast("Brza izmjena poništena.");
+}
+function welcome() {
+  const n = S.lib.items.length;
+  return el("div", { class: "empty" },
+    el("h1", {}, "Uredi bilo što u knjižnici"),
+    el("p", {}, `Odaberi rad lijevo (${n} u snimci). Prijeđi mišem preko odlomka i klikni `, el("b", {}, "Uredi"), " ili dvaput klikni na njega."),
+    el("p", {}, S.caps.comments ? "Možeš i komentirati odlomak (komentarni način na vrhu ili gumb Komentiraj) i poslati ga Claudeu: male izmjene napravi odmah ova stranica, veće Claude." : "Komentari i brze izmjene rade kad je urednik objavljen kao Claude artefakt."),
+    el("p", {}, "Kad završiš: ", el("b", {}, "Pošalji u knjižnicu"), " — Claude otvara pull request s tvojim GitHub računom."));
+}
+async function commentOn(node) {
+  try { const r = await S.caps.comments.openComposer({ element: node }); if (!r.opened) toast("Komentarni okvir nije otvoren — klikni na stranicu pa pokušaj opet."); }
+  catch (e) { if (e && e.code === "unavailable") { S.caps.comments = null; renderDoc(); } toast("Komentiranje ovdje nije dostupno."); }
+}
+
+/* ---------------- quick edits: a comment sent to Claude, tried here first ---------------- */
+function findBlockByAnchor(anchor) {
+  const m = anchor && /#b-([a-z0-9]+-[a-z0-9]+)/.exec(anchor);
+  if (!m) return null;
+  for (const it of S.items.values()) for (const p of it.files) {
+    const idx = blocksOf(p).findIndex((b) => b.id === m[1]);
+    if (idx >= 0) return { item: it, path: p, idx };
+  }
+  return null;
+}
+async function quickEdit(req, ctx) {
+  const hit = findBlockByAnchor(req.anchor);
+  if (!hit || !S.caps.sample) return { handled: false };
+  const blocks = blocksOf(hit.path), b = blocks[hit.idx];
+  const before = blocks.slice(Math.max(0, hit.idx - 2), hit.idx).map((x) => x.raw).join("");
+  const after = blocks.slice(hit.idx + 1, hit.idx + 3).map((x) => x.raw).join("");
+  const prompt = [
+    "You edit one block of a file in the MatSek community mathematics library (Markdown with $...$ / $$...$$ KaTeX math, Obsidian [[wikilinks]] to forest trees).",
+    "A member selected the block below and wrote a request. Decide:",
+    '- If the request asks to CHANGE this block and the change fits inside this block, reply {"action":"edit","markdown":"<the complete new block text>","summary":"<max 8 words, in the language of the request>"}.',
+    '- Otherwise (a question, a discussion, a change that needs other blocks or files, or anything unclear), reply {"action":"pass"}.',
+    "Rules for edits: change only what was asked; keep the language, notation, math delimiters, wikilinks and the trailing blank lines exactly as in the original; all math must be valid KaTeX; never invent references.",
+    "Reply with only the JSON object.",
+    "",
+    `File: ${hit.path} (${hit.item.title})`,
+    "--- context before (read only) ---", before.slice(-2500),
+    "--- THE BLOCK ---", b.raw,
+    "--- context after (read only) ---", after.slice(0, 2500),
+    "--- member's request ---", req.text,
+  ].join("\n");
+  let out;
+  try { out = await S.caps.sample.json(prompt, { signal: ctx.signal, cache: false }); }
+  catch (e) {
+    if (e && (e.code === "not_granted" || e.code === "sampling_disabled" || e.code === "not_declared")) { S.caps.sample = null; refreshPills(); }
+    return { handled: false };
+  }
+  if (ctx.signal.aborted || !out || out.action !== "edit" || typeof out.markdown !== "string" || !out.markdown.trim()) return { handled: false };
+  let v = out.markdown; if (b.raw.endsWith("\n") && !v.endsWith("\n")) v += b.raw.match(/\n+$/)[0];
+  const probs = mathIssues(v);
+  if (probs.length) return { handled: false, reply: "Brza izmjena je dala neispravnu matematiku — šaljem Claudeu." };
+  S.undo.set(b.id, { ...b }); S.aiTouched.add(b.id);
+  setDraft(hit.path, blocksOf(hit.path).map((x) => (x.id === b.id ? { ...x, raw: v, ai: true } : x)));
+  if (S.current && S.current.path === hit.path) renderDoc();
+  return { handled: true, reply: ("Uređeno: " + String(out.summary || "blok je promijenjen") + " · Poništi je na bloku.").slice(0, 300) };
+}
+
+/* ---------------- changes drawer ---------------- */
+function lineDiff(a, b) {
+  const A = a.split("\n"), B = b.split("\n"), n = A.length, m = B.length;
+  const dp = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const ops = []; let i = 0, j = 0;
+  while (i < n && j < m) { if (A[i] === B[j]) { ops.push([" ", A[i]]); i++; j++; } else if (dp[i + 1][j] >= dp[i][j + 1]) ops.push(["-", A[i++]]); else ops.push(["+", B[j++]]); }
+  while (i < n) ops.push(["-", A[i++]]); while (j < m) ops.push(["+", B[j++]]);
+  return ops;
+}
+function diffView(a, b) {
+  const ops = lineDiff(a, b), box = el("div", { class: "diff" }), keep = new Array(ops.length).fill(false);
+  ops.forEach((o, k) => { if (o[0] !== " ") for (let d = -2; d <= 2; d++) if (ops[k + d]) keep[k + d] = true; });
+  let gap = false;
+  ops.forEach((o, k) => {
+    if (!keep[k]) { if (!gap) box.append(el("div", { class: "gap" }, "⋯")); gap = true; return; }
+    gap = false; box.append(el("div", { class: o[0] === "+" ? "add" : o[0] === "-" ? "del" : "ctx" }, (o[0] === " " ? "  " : o[0] + " ") + o[1]));
+  });
+  return box;
+}
+function openOverlay(title, body, center) {
+  const ov = el("div", { class: "overlay" + (center ? " center" : ""), onclick: (e) => { if (e.target === ov) close(); } });
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  ov.append(el("div", { class: "panel" + (center ? " center" : ""), role: "dialog", "aria-modal": "true", "aria-label": title },
+    el("div", { class: "panel-h" }, el("h2", {}, title), el("button", { class: "x", type: "button", "aria-label": "Zatvori", onclick: close }, "×")),
+    el("div", { class: "panel-b" }, body)));
+  document.body.append(ov);
+  return close;
+}
+function showChanges() {
+  const body = el("div");
+  if (!S.drafts.size) body.append(el("p", { class: "muted" }, "Još nema promjena. Uredi neki blok pa se vrati ovamo."));
+  let close;
+  for (const [path, d] of [...S.drafts.entries()].sort()) {
+    const it = S.owner.get(path);
+    body.append(el("div", { class: "chg-file" },
+      el("h3", {}, path, el("a", { onclick: () => { close(); openItem(it.key, path); } }, "otvori"),
+        el("a", { onclick: () => { const keep = d; setDraft(path, origBlocks(path)); close(); showChanges(); renderDoc(); undoToast(path, keep); } }, "odbaci")),
+      diffView(S.lib.files[path] || "", textOf(d.blocks))));
+  }
+  close = openOverlay(`Promjene · ${S.drafts.size} ${S.drafts.size === 1 ? "datoteka" : "datoteke"}`, body);
+}
+
+/* ---------------- submission ---------------- */
+function blockMap(blocks) {
+  let line = 1; const out = [];
+  // [block id, first non-blank line] — where a PR review comment on the block goes
+  for (const b of blocks) { const lead = (b.raw.match(/^\s*\n/) || [""])[0].split("\n").length - 1; out.push([b.id, line + lead]); line += (b.raw.match(/\n/g) || []).length; }
+  return out;
+}
+async function showSubmit() {
+  const body = el("div");
+  const close = openOverlay("Pošalji u knjižnicu", body, true);
+  if (!S.drafts.size) { body.append(el("p", { class: "muted" }, "Nema promjena za slanje.")); return; }
+  const changed = [...S.drafts.keys()].sort();
+  const titles = [...new Set(changed.map((p) => S.owner.get(p).title))];
+  const stale = changed.filter((p) => S.drafts.get(p).base_commit !== S.lib.commit);
+  const badMath = changed.filter((p) => p.endsWith(".md") && mathIssues(textOf(S.drafts.get(p).blocks)).length);
+  const title = el("input", { value: (titles.length === 1 ? "Uređivanje: " + titles[0] : `Uređivanje ${titles.length} radova`).slice(0, 120) });
+  const desc = el("textarea", { placeholder: "Što si promijenio/la i zašto (ispravak, pojašnjenje, novi primjer…)" });
+  const ghUser = el("input", { placeholder: "npr. iivic (nije obavezno — Claude ga zna iz tvoje gh prijave)" });
+  const a1 = el("input", { type: "checkbox" }), a2 = el("input", { type: "checkbox" }), a3 = el("input", { type: "checkbox" });
+  const send = el("button", { class: "btn primary", type: "button", disabled: true }, S.store.kind === "db" ? "Predaj Claudeu" : "Preuzmi prijavu (.json)");
+  const sync = () => { send.disabled = !(a1.checked && a2.checked && a3.checked && title.value.trim()); };
+  [a1, a2, a3].forEach((c) => c.addEventListener("change", sync)); title.addEventListener("input", sync);
+
+  body.append(...[
+    el("p", { class: "small muted" }, `${changed.length} ${changed.length === 1 ? "datoteka" : "datoteke"}: `, changed.join(", ")),
+    stale.length ? el("div", { class: "note" }, "Neki nacrti su sa starije snimke — Claude će ih prenijeti na najnoviju verziju.") : null,
+    badMath.length ? el("div", { class: "note" }, "KaTeX ne prihvaća dio matematike u: " + badMath.join(", ") + ". Ispravi prije slanja — CI će to odbiti.") : null,
+    el("label", { class: "field" }, "Naslov pull requesta", title),
+    el("label", { class: "field" }, "Opis", desc),
+    el("label", { class: "field" }, "GitHub korisničko ime", ghUser),
+    el("div", { class: "affirm" },
+      el("h4", {}, "Izjava o podrijetlu (obavezno — ovo je ugovor o doprinosu)"),
+      el("label", {}, a1, el("span", {}, "Sadržaj sam napisao/la sam(a), ili je uredno atribuirana prilagodba licencno kompatibilnog izvora (provenance: adapted + adapted_from).")),
+      el("label", {}, a2, el("span", {}, "Sve što je nastalo uz pomoć AI modela (uključujući brze izmjene iz komentara) označeno je provenance: ai-assisted i osobno sam provjerio/la da je točno i da nije prepisano iz udžbenika, zbirke ili natjecanja.")),
+      el("label", {}, a3, el("span", {}, "Svoj doprinos neopozivo licenciram pod CC BY 4.0 — isti uvjeti pod kojima ga svi dobivaju."))),
+    el("div", { class: "row", style: "display:flex;gap:8px" }, send, el("button", { class: "btn", type: "button", onclick: close }, "Odustani")),
+    el("p", { class: "small muted" }, "Pravila: ", el("a", { href: "https://github.com/matsek-fer/spec/blob/main/policies/provenance.md", target: "_blank", rel: "noopener" }, "spec/policies/provenance.md"))].filter(Boolean));
+
+  const statusBox = el("div");
+  body.append(statusBox);
+  if (S.store.recentSubmissions) S.store.recentSubmissions().then((subs) => {
+    const open = subs.filter((s) => s.status && s.status !== "draft");
+    if (open.length) statusBox.append(el("h4", { style: "margin:16px 0 4px" }, "Nedavne prijave"), ...open.map((s) => subStatus(s)));
+  });
+
+  send.addEventListener("click", async () => {
+    send.disabled = true;
+    const id = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12) + "-" + rid();
+    const aiBlocks = Object.fromEntries(changed.map((p) => [p, S.drafts.get(p).blocks.filter((b) => b.ai).map((b) => b.id)]).filter(([, ids]) => ids.length));
+    const ai = Object.keys(aiBlocks).length > 0;
+    const sub = {
+      id, status: "ready", created: new Date().toISOString(), base_commit: S.lib.commit,
+      title: title.value.trim(), body: desc.value.trim(), github_user: ghUser.value.trim() || null,
+      affirmations: { authored_or_adapted: true, ai_marked_and_checked: true, cc_by_4_0: true },
+      used_quick_edits: ai, ai_blocks: aiBlocks,
+      files: changed.map((p) => ({ path: p, content: textOf(S.drafts.get(p).blocks), draft_base_commit: S.drafts.get(p).base_commit, item: S.owner.get(p).key })),
+      block_map: Object.fromEntries(changed.map((p) => [p, blockMap(S.drafts.get(p).blocks)])),
+    };
+    if (S.store.kind === "db") {
+      try { await S.store.submit(sub); } catch (e) { toast("Prijava nije spremljena (" + (e && e.code) + ")."); send.disabled = false; return; }
+      statusBox.replaceChildren(subStatus(sub));
+      S.store.watchSubmission(id, (s) => { if (s) statusBox.replaceChildren(subStatus(s)); });
+    } else {
+      const json = JSON.stringify(sub, null, 2);
+      try {
+        const a = el("a", { href: URL.createObjectURL(new Blob([json], { type: "application/json" })), download: `matsek-prijava-${id}.json` });
+        document.body.append(a); a.click(); a.remove();
+      } catch {}
+      statusBox.replaceChildren(el("div", { class: "status ready" }, "Prijava je preuzeta kao ", el("code", {}, `matsek-prijava-${id}.json`), ". U Claude Codeu reci: »Pošalji ovu MatSek prijavu« i navedi datoteku.",
+        el("div", { class: "copyline" }, el("code", {}, json.length + " znakova JSON-a"), el("button", { class: "btn", type: "button", onclick: () => navigator.clipboard.writeText(json).then(() => toast("Kopirano."), () => toast("Kopiranje nije dopušteno.")) }, "Kopiraj JSON"))));
+    }
+  });
+}
+function subStatus(s) {
+  const say = "Pošalji moju MatSek prijavu";
+  if (s.status === "ready" || s.status === "working") {
+    return el("div", { class: "status ready" },
+      s.status === "working" ? el("b", {}, "Claude radi na pull requestu… ") : el("b", {}, "Spremno za Claudea. "),
+      `„${s.title}“ (${s.files ? s.files.length : "?"} dat.). U razgovoru s Claudeom reci:`,
+      el("div", { class: "copyline" }, el("code", {}, say), el("button", { class: "btn", type: "button", onclick: () => navigator.clipboard.writeText(say).then(() => toast("Kopirano."), () => toast("Kopiranje nije dopušteno.")) }, "Kopiraj")));
+  }
+  if (s.status === "opened") {
+    return el("div", { class: "status opened" }, el("b", {}, "Pull request je otvoren: "),
+      el("a", { href: s.pr_url, target: "_blank", rel: "noopener" }, s.pr_url), s.note ? el("div", { class: "small" }, s.note) : null,
+      el("div", { class: "copyline" }, el("button", { class: "btn", type: "button", onclick: () => clearSubmitted(s) }, "Očisti poslane nacrte")));
+  }
+  if (s.status === "failed") return el("div", { class: "status failed" }, el("b", {}, "Slanje nije uspjelo: "), s.error || "bez poruke", el("div", { class: "small" }, "Nacrti su netaknuti — ispravi i pošalji ponovno."));
+  return el("div", { class: "status" }, s.status);
+}
+function clearSubmitted(s) {
+  let n = 0;
+  for (const f of s.files || []) {
+    const d = S.drafts.get(f.path);
+    if (d && textOf(d.blocks) === f.content) { S.drafts.delete(f.path); S.store.save(f.path, null); n++; }
+  }
+  refreshChrome(); renderDoc(); toast(n ? `Očišćeno ${n} nacrta (ono što je u PR-u).` : "Nacrti su u međuvremenu mijenjani — ostavljeni su.");
+}
+
+/* ---------------- capability wiring ---------------- */
+function refreshPills() {
+  const sp = $("#storePill"), ap = $("#aiPill");
+  sp.textContent = S.store.kind === "db" ? "Nacrti: u oblaku" : "Nacrti: ovaj preglednik";
+  sp.classList.toggle("on", S.store.kind === "db");
+  const quick = !!(S.caps.comments && S.caps.sample && S.caps.quickHook);
+  ap.textContent = quick ? "Brze izmjene: uključene" : S.caps.comments ? "Komentari: uključeni" : "Komentari: nedostupni";
+  ap.classList.toggle("on", quick || !!S.caps.comments);
+}
+async function wireCapabilities() {
+  const use = (n) => (window.claude && typeof window.claude.use === "function" ? window.claude.use(n).catch(() => null) : Promise.resolve(null));
+  const [db, comments, sample] = await Promise.all([use("db"), use("comments"), use("sample")]);
+  S.caps = { db, comments, sample, quickHook: false };
+  S.store = db ? dbStore(db) : localStore();
+  if (comments && "onSendToClaude" in comments && sample) {
+    comments.onSendToClaude((req, ctx) => quickEdit(req, ctx));
+    S.caps.quickHook = true;
+  }
+}
+
+/* ---------------- boot ---------------- */
+async function boot() {
+  $("#docWrap").append(el("p", { class: "empty" }, "Učitavam knjižnicu…"));
+  try { S.lib = await (await fetch("library.json")).json(); }
+  catch (e) { $("#docWrap").replaceChildren(el("div", { class: "empty" }, el("h1", {}, "Snimka knjižnice nije učitana"), el("p", {}, "library.json nije pronađen uz stranicu. Pokreni skill ponovno da ga izgradi."))); return; }
+  for (const it of S.lib.items) {
+    S.items.set(it.key, it);
+    for (const f of it.files) S.owner.set(f, it);
+    if (it.digested_from) { if (!S.digestedInto.has(it.digested_from)) S.digestedInto.set(it.digested_from, []); S.digestedInto.get(it.digested_from).push(it); }
+  }
+  $("#snap").textContent = `snimka ${S.lib.commit.slice(0, 7)} · ${shortDate(S.lib.commit_date)}`;
+  $("#snap").title = `matsek-fer/library @ ${S.lib.commit}, izgrađeno ${S.lib.built_at}`;
+  await wireCapabilities();
+  try {
+    const all = await S.store.loadAll();
+    for (const [p, d] of Object.entries(all)) if (S.lib.files[p] != null && d && Array.isArray(d.blocks)) S.drafts.set(p, d);
+  } catch { toast("Nacrti se nisu učitali."); }
+  S.store.subscribe((path, d) => {
+    if (S.lib.files[path] == null) return;
+    const mine = S.drafts.get(path);
+    if (d ? mine && JSON.stringify(mine.blocks) === JSON.stringify(d.blocks) : !mine) return;
+    if (d) S.drafts.set(path, d); else S.drafts.delete(path);
+    refreshChrome();
+    if (S.current && S.current.path === path && !S.editing) { renderDoc(); toast("Nacrt je izmijenjen izvana (Claude)."); }
+  });
+  refreshPills(); buildChips(); refreshChrome();
+  $("#search").addEventListener("input", (e) => { S.query = e.target.value; renderList(); });
+  $("#changesBtn").addEventListener("click", showChanges);
+  $("#submitBtn").addEventListener("click", showSubmit);
+  $("#menuBtn").addEventListener("click", () => $("#side").classList.toggle("open"));
+  const fromHash = () => { const k = decodeURIComponent(location.hash.slice(1)).replace("--", "/"); if (S.items.has(k)) openItem(k); else renderDoc(); };
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
+}
+boot();
+</script>
+</body>
+</html>

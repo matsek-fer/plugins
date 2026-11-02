@@ -1,0 +1,10 @@
+{
+  "name": "editor",
+  "version": "0.1.0",
+  "description": "MatSek urednik: edit any library file (blogs, trees, problems, proofs, the concept registry) block by block in your own published editor page, comment on blocks for quick or larger edits, and submit — Claude opens the pull request with your GitHub account.",
+  "author": {
+    "name": "Matematička sekcija FER",
+    "url": "https://github.com/matsek-fer"
+  },
+  "skills": ["./skills/edit"]
+}

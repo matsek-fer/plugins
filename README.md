@@ -17,6 +17,7 @@ Updates arrive automatically through the marketplace.
 | `blog-writer` | Forest-ready blog authoring: one-concept sections, checkpoints, tutor hand-off | **live** |
 | `submit` | Experience submission (consent-gated) + maintainer improvement flow | **live** |
 | `forest` | Knowledge Forest: digest a book into a typed vault of theorems, proofs and expositions (slice 1 — the digester) | **live** |
+| `editor` | MatSek urednik: edit any library file in your own editor page, comment on blocks, submit as a PR from your GitHub account | **new** |
 
 Every entry is validated with `claude plugin validate` before it ships,
 and sources are explicit https URLs — the `github` source type clones
