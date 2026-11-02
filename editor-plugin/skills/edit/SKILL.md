@@ -31,10 +31,14 @@ this skill does not restate them.
 | Block ids | `<fnv(path)>-<index>` for snapshot blocks, `<fnv(path)>-n<random>` for new ones; DOM id `b-<id>` |
 | Draft tool | `scripts/draft.mjs` (same splitting and ids as the page) |
 | PR tool | `scripts/apply-submission.mjs apply|body` |
+| Your side, in Claude Code | `ArtifactData` reads and writes the db; `ArtifactComments` reads, answers and resolves threads |
 
 `status` moves `ready` (page) → `working` → `opened` (+ `pr_url`) or
 `failed` (+ `error`), and the page shows each one live. Only you write
-`working`, `opened` and `failed`.
+`working`, `opened` and `failed`. Write a status as an `update` of just
+the fields that change, pinned with `if_version` to the version you read:
+the store refuses an unpinned write to an existing document, and the pin
+also stops you overwriting a submission the member changed meanwhile.
 
 ## A. Open or refresh the editor
 
@@ -58,11 +62,17 @@ this skill does not restate them.
 4. **Publish** with the tool that publishes from files on disk: `index.html`,
    `library.json`, `vendor/katex.min.js`, `vendor/marked.min.js`,
    `katex/katex.min.css`, and every `katex/fonts/*.woff2`, each served under
-   its relative path. Title `MatSek urednik`, icon `edit`. Call the
-   artifacts `guide` first if you have not this session.
-5. **Declare capabilities** exactly as below. On a new artifact, publish
-   first and then declare. On an existing one, compare with
-   `read_declaration` and redeclare only if it differs:
+   its relative path. Title `MatSek urednik`, icon `edit`. Load the
+   session's artifact guidance first if you have not (in Claude Code, the
+   `artifact-capabilities` skill). In Claude Code this is the `Artifact`
+   tool: `file_path` is `<out>/index.html`, the other files go in `files`
+   keyed by their relative path, and a refresh passes the existing
+   artifact's `url`.
+5. **Declare capabilities** exactly as below. Claude Code's `Artifact`
+   tool takes them as `capabilities` on the first publish; a refresh
+   leaves the field out so the stored declaration carries over. Where
+   declaring is a separate step, publish first, then declare, and on a
+   refresh redeclare only if the stored declaration differs:
    ```json
    {
      "db": { "rules": [ { "path": "", "read": "admin", "write": "admin" } ] },
@@ -100,7 +110,7 @@ one editor page as the club's tool.
    `submissions` and take the newest with `status: "ready"`. If several
    are ready, list them by title and ask which one. With a downloaded JSON
    file, use that instead. Save it to a scratch file. Set `status:
-   "working"` right away (a full-document write that keeps every field).
+   "working"` right away (a pinned `update`, as above).
 2. **GitHub identity.** `gh auth status`. If gh is not logged in, stop and
    ask the member to run `gh auth login` themselves: the PR must be opened
    by their account, never yours or a shared token. Note their login

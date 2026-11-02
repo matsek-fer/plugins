@@ -29,6 +29,14 @@
     color-scheme: dark;
   }
 }
+/* The artifact viewer sets data-theme when the viewer picks a theme in
+   claude.ai, which can differ from the OS preference. */
+:root[data-theme="dark"] {
+  --bg: #161511; --surface: #1E1D18; --surface-2: #26241E; --ink: #ECEAE2; --muted: #A9A69B; --faint: #7E7B70;
+  --border: #35332B; --accent: #EE8B3E; --accent-ink: #F2A059; --accent-soft: #33271C;
+  --good: #8FBF88; --good-soft: #1F2A1D; --warn: #D8A94E; --warn-soft: #2E2615; --bad: #E58A7A; --bad-soft: #35201C;
+  color-scheme: dark;
+}
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-ui); }
@@ -38,7 +46,7 @@ a { color: var(--accent-ink); }
 .hidden { display: none !important; }
 
 /* ---------- app frame ---------- */
-.app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+.app { display: grid; grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); height: 100vh; }
 header.top {
   display: flex; align-items: center; gap: 14px; padding: 10px 18px;
   border-bottom: 1px solid var(--border); background: var(--surface);
@@ -59,6 +67,14 @@ header.top {
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn .n { display: inline-block; min-width: 1.4em; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 0.8rem; text-align: center; }
 .btn.primary .n { background: rgba(255,255,255,.25); color: #fff; }
+/* The header is a nowrap row: in a claude.ai artifact pane (~900px) it
+   pushed the submit button off-screen. Drop the status pills first, then
+   the snapshot and the long labels. */
+@media (max-width: 1100px) { .top .pill { display: none; } }
+@media (max-width: 560px) {
+  header.top { gap: 8px; padding: 8px 12px; }
+  .snap, .wide { display: none; }
+}
 
 .body { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; }
 @media (max-width: 860px) { .body { grid-template-columns: 1fr; } aside.side { display: none; } aside.side.open { display: flex; position: fixed; inset: 52px 0 0 0; z-index: 20; } .menu-btn { display: inline-block !important; } }
@@ -181,13 +197,13 @@ label.field textarea { min-height: 110px; resize: vertical; }
 <div class="app">
   <header class="top">
     <button class="btn menu-btn" id="menuBtn" type="button" aria-label="Popis radova">☰</button>
-    <div class="brand">Mat<b>Sek</b> urednik</div>
+    <div class="brand">Mat<b>Sek</b><span class="wide"> urednik</span></div>
     <div class="snap" id="snap"></div>
     <div class="spacer"></div>
     <span class="pill" id="storePill" title="Gdje se spremaju nacrti">…</span>
     <span class="pill" id="aiPill" title="Brze izmjene kroz komentare (Send to Claude)">…</span>
     <button class="btn" id="changesBtn" type="button">Promjene<span class="n" id="chgN">0</span></button>
-    <button class="btn primary" id="submitBtn" type="button">Pošalji u knjižnicu</button>
+    <button class="btn primary" id="submitBtn" type="button" aria-label="Pošalji u knjižnicu">Pošalji<span class="wide"> u knjižnicu</span></button>
   </header>
   <div class="body">
     <aside class="side" id="side">
@@ -407,11 +423,14 @@ function dbStore(db) {
       });
     },
     // Claude may edit a draft directly (bigger rewrites from a comment):
-    // apply those writes live, ignoring the echo of our own.
+    // apply those writes live, ignoring the echo of our own. Skip per
+    // document, not per snapshot: one snapshot can carry our pending save
+    // of one file and Claude's rewrite of another, and docChanges() never
+    // delivers a change twice.
     subscribe(onRemote) {
       db.collection("drafts").onSnapshot((snap) => {
-        if (snap.metadata.hasPendingWrites) return;
         for (const ch of snap.docChanges()) {
+          if (ch.doc.metadata.hasPendingWrites) continue;
           const v = ch.doc.data(); if (!v || !v.path) continue;
           onRemote(v.path, ch.type === "removed" ? null : v);
         }
